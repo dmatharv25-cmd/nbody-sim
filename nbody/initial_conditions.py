@@ -28,3 +28,39 @@ def figure_eight():
     pos = np.array([p1, -p1, [0.0, 0.0]])
     vel = np.array([-v3 / 2, -v3 / 2, v3])
     return pos, vel, np.ones(3), 6.32591398
+
+
+def plummer_sphere(n, a=1.0, total_mass=1.0, G=1.0, seed=0):
+    """Random N-body realisation of a Plummer sphere in approximate virial equilibrium (3D).
+
+    Positions follow the Plummer density profile; speeds are drawn from its isotropic
+    distribution function by rejection sampling (Aarseth, Henon & Wielen 1974).
+    Centre of mass position and velocity are shifted to zero.
+    """
+    rng = np.random.default_rng(seed)
+    masses = np.full(n, total_mass / n)
+
+    # radii from the inverse cumulative mass function
+    X = rng.uniform(1e-6, 1.0 - 1e-6, n)
+    r = a / np.sqrt(X ** (-2.0 / 3.0) - 1.0)
+    cos_t = rng.uniform(-1, 1, n); phi = rng.uniform(0, 2 * np.pi, n)
+    sin_t = np.sqrt(1 - cos_t ** 2)
+    pos = r[:, None] * np.stack([sin_t * np.cos(phi), sin_t * np.sin(phi), cos_t], axis=1)
+
+    # speeds: q = v / v_escape drawn from g(q) = q^2 (1 - q^2)^(7/2)
+    q = np.empty(n)
+    for i in range(n):
+        while True:
+            x, y = rng.uniform(0, 1), rng.uniform(0, 0.1)
+            if y < x ** 2 * (1 - x ** 2) ** 3.5:
+                q[i] = x
+                break
+    v_esc = np.sqrt(2.0 * G * total_mass) * (r ** 2 + a ** 2) ** -0.25
+    speed = q * v_esc
+    cos_t = rng.uniform(-1, 1, n); phi = rng.uniform(0, 2 * np.pi, n)
+    sin_t = np.sqrt(1 - cos_t ** 2)
+    vel = speed[:, None] * np.stack([sin_t * np.cos(phi), sin_t * np.sin(phi), cos_t], axis=1)
+
+    pos -= (masses[:, None] * pos).sum(axis=0) / masses.sum()
+    vel -= (masses[:, None] * vel).sum(axis=0) / masses.sum()
+    return pos, vel, masses
