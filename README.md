@@ -1,5 +1,7 @@
 ﻿# N-Body Gravity Simulator
 
+[![tests](https://github.com/dmatharv25-cmd/nbody-sim/actions/workflows/tests.yml/badge.svg)](https://github.com/dmatharv25-cmd/nbody-sim/actions/workflows/tests.yml)
+
 A from-scratch gravitational N-body simulator in Python, built to answer one question honestly:
 **how accurate and how fast are the standard numerical methods, and what does each approximation cost?**
 Everything is validated against analytical results and measured, not assumed.
@@ -95,3 +97,4 @@ forces not being exactly equal and opposite between particle pairs (Newton's thi
 - [ ] Adaptive time stepping
 - [ ] Sun-Earth-Moon validation against NASA JPL ephemeris data
 - [ ] Interactive Streamlit UI / animations
+
