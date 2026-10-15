@@ -4,7 +4,7 @@
 
 A from-scratch gravitational N-body simulator in Python, built to answer one question honestly:
 **how accurate and how fast are the standard numerical methods, and what does each approximation cost?**
-Everything is validated against analytical results and measured, not assumed.
+Everything is checked against analytical results or exact direct summation, and measured, not assumed.
 
 <p align="center">
   <img src="results/figure_eight.gif" alt="Figure-eight three-body orbit" width="48%">
@@ -13,8 +13,8 @@ Everything is validated against analytical results and measured, not assumed.
 
 ## Key findings
 - **Integrators** (Euler, Velocity Verlet, RK4, all written from scratch) reproduce their theoretical orders of
-  accuracy on a Kepler orbit: measured slopes of about 0.8 (Euler, pre-asymptotic at the step sizes tested), 2.00 (Verlet)
-  and 4.1 (RK4).
+  accuracy on a Kepler orbit for Velocity Verlet (measured slope 2.00) and RK4 (4.1). Euler's measured slope is
+  about 0.8, below its theoretical 1, which I attribute to the step sizes tested being too coarse.
 - **Verlet's energy error stays bounded** over 20 eccentric orbits, while Euler's grows to about 100%.
 - **Numba kernels** are 6-10x (serial) and 10-33x (parallel, 12 logical cores) faster than vectorized NumPy at
   N = 200-1600, agreeing to roundoff.
@@ -97,7 +97,7 @@ All implementations agree to floating-point roundoff (max difference about 1e-13
 | 3200 | - | 0.11988 | 0.03581 | - | - |
 
 Speedups are relative to the vectorized NumPy version. Parallel scaling is about 3.3x over serial, not 12x,
-limited by physical core count, thread overhead and memory bandwidth. All versions are still O(N^2).
+probably limited by physical core count, thread overhead and memory bandwidth (not profiled). All versions are still O(N^2).
 
 ## 3. Barnes-Hut tree code
 Replaces distant groups of particles by their centre of mass when (node width) / (distance) < theta. With
