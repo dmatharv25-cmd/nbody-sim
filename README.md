@@ -27,11 +27,34 @@ Everything is validated against analytical results and measured, not assumed.
   machine precision (2e-17) while Barnes-Hut does not (1.5e-4), and Barnes-Hut energy error is 37-127x larger.
 
 ## Project structure
+```
+nbody/                  the library
+  integrators.py        Euler, Velocity Verlet, RK4
+  forces.py             vectorized NumPy direct sum
+  forces_naive.py       plain-loop reference implementation
+  forces_numba.py       Numba direct sum (serial and parallel)
+  barnes_hut.py         pure-Python Barnes-Hut tree
+  barnes_hut_numba.py   compiled flat-array Barnes-Hut tree (3D only)
+  simulation.py         time-stepping driver
+  initial_conditions.py initial conditions for the test systems
+  diagnostics.py        energy, momentum and other conserved quantities
+tests/                  pytest suite
+experiments/            scripts that produce the validation figures and animations
+benchmarks/             timing scripts for the force kernels and the tree
+results/                generated figures and GIFs used in this README
+```
 
 ## Run it
 From the repository root:
 
-Reproduce the results (each script writes its output to `results/`; run them from the repository root):
+```
+python -m venv venv
+venv\Scripts\activate           # Windows; on Linux/macOS: source venv/bin/activate
+pip install -r requirements.txt
+python -m pytest -q             # the first run is slow because Numba compiles the kernels
+```
+
+Reproduce the results. Scripts that make figures or animations write them to `results/`; the force-kernel benchmarks only print their tables. Run everything from the repository root:
 
 | Section | Command |
 |---|---|
