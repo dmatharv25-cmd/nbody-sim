@@ -29,6 +29,21 @@ Everything is validated against analytical results and measured, not assumed.
 ## Project structure
 
 ## Run it
+From the repository root:
+
+Reproduce the results (each script writes its output to `results/`; run them from the repository root):
+
+| Section | Command |
+|---|---|
+| 1. Integrator convergence | `python experiments/convergence.py` |
+| 1. Energy comparison | `python experiments/energy_comparison.py` |
+| 2. Force-kernel timings | `python benchmarks/bench_forces.py`, `python benchmarks/bench_numba.py` |
+| 3. Barnes-Hut accuracy | `python benchmarks/bench_barnes_hut.py` |
+| 3. Compiled-tree scaling | `python benchmarks/bench_tree_scaling.py` (optionally with a maximum N, e.g. `16000`, for a quicker run) |
+| 4. Cluster conservation | `python experiments/cluster_comparison.py` (a few minutes, because it uses the pure-Python tree) |
+| Animations | `python experiments/make_animations.py` |
+
+Timings depend on your CPU. The numbers in this README came from a 12-logical-core machine.
 
 ## 1. Integrator validation (two-body Kepler orbit, e = 0.6)
 Validated against the analytical period, energy E = -G m1 m2 / (2a), and return to the initial state after one
