@@ -34,7 +34,7 @@ Euler's measured order is below 1 because the tested step sizes are too coarse t
 
 ## Roadmap
 - [x] Numba acceleration and benchmarks vs. pure NumPy
-- [ ] Barnes-Hut tree (O(N log N)) with accuracy-vs-speed tradeoff
+- [x] Barnes-Hut tree (O(N log N)) with accuracy-vs-speed tradeoff
 - [ ] Adaptive time stepping
 - [ ] Sun-Earth-Moon validation against NASA JPL ephemeris data
 - [ ] Streamlit UI / animations
@@ -54,3 +54,27 @@ All implementations agree to floating-point roundoff (max difference ~1e-13).
 Speedups are relative to the vectorized NumPy version. Parallel scaling is about 3.3x over serial, not 12x,
 limited by physical core count, thread overhead and memory bandwidth. All versions are still O(N^2),
 which is what Barnes-Hut addresses next.
+
+
+## Barnes-Hut tree code
+A quadtree/octree implementation (`nbody/barnes_hut.py`) that replaces distant groups of particles with
+their centre of mass when (node width) / (distance) < theta. With theta = 0 it reproduces the direct sum
+to roundoff (tested in 2D and 3D).
+
+**Accuracy vs. cost** (N = 1000, 3D Gaussian cloud, relative force error vs. direct sum):
+
+| theta | median error | worst-particle error | interactions vs. direct |
+|---|---|---|---|
+| 0.2 | 2.4e-4 | 1.7e-3 | 75.7% |
+| 0.3 | 8.7e-4 | 7.0e-3 | 54.7% |
+| 0.5 | 3.5e-3 | 4.3e-2 | 29.2% |
+| 0.7 | 8.6e-3 | 1.5e-1 | 17.3% |
+| 1.0 | 2.4e-2 | 2.7e-1 | 9.7% |
+
+**Work vs. N** (theta = 0.5): pair interactions grow with an empirical exponent of 1.54 over N = 250 to 2000
+(direct sum: 2.00). At N = 2000 the tree does 20% of the direct-sum work. This range is too small to confirm
+the asymptotic O(N log N) behaviour; larger N is needed. The tree is pure Python, so its wall-clock time is
+not competitive with the compiled Numba direct sum yet. The benchmark counts interactions, which are
+hardware-independent.
+
+![barnes-hut](results/barnes_hut.png)
