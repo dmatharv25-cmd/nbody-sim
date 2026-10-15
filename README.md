@@ -6,6 +6,10 @@ A from-scratch gravitational N-body simulator in Python, built to answer one que
 **how accurate and how fast are the standard numerical methods, and what does each approximation cost?**
 Everything is validated against analytical results and measured, not assumed.
 
+<p align="center">
+  <img src="results/figure_eight.gif" alt="Figure-eight three-body orbit" width="48%">
+  <img src="results/cluster.gif" alt="Plummer star cluster" width="38%">
+</p>
 ## Key findings
 - **Integrators** (Euler, Velocity Verlet, RK4, all written from scratch) reproduce their theoretical orders of
   accuracy on a Kepler orbit: measured slopes of about 1 (Euler, pre-asymptotic at the step sizes tested), 2.00 (Verlet)
@@ -97,4 +101,5 @@ forces not being exactly equal and opposite between particle pairs (Newton's thi
 - [ ] Adaptive time stepping
 - [ ] Sun-Earth-Moon validation against NASA JPL ephemeris data
 - [ ] Interactive Streamlit UI / animations
+
 
