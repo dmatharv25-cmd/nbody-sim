@@ -6,6 +6,8 @@ A from-scratch gravitational N-body simulator in Python, built to answer one que
 **how accurate and how fast are the standard numerical methods, and what does each approximation cost?**
 Everything is checked against analytical results or exact direct summation, and measured, not assumed.
 
+**[Live demo](https://nbody-sim-demo.streamlit.app/)**: compare Euler, Velocity Verlet and RK4 on Kepler, figure-eight and cluster systems (NumPy direct sum; the first load may take a few seconds if the app has gone to sleep).
+
 <p align="center">
   <img src="results/figure_eight.gif" alt="Figure-eight three-body orbit" width="48%">
   <img src="results/cluster.gif" alt="Plummer star cluster" width="38%">
