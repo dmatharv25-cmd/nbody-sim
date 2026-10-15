@@ -1,47 +1,44 @@
-﻿# N-Body Simulator with Validated Numerical Integrators
+﻿# N-Body Gravity Simulator
 
-A from-scratch gravitational N-body simulator in Python/NumPy. The focus is **numerical correctness**:
-every integrator is validated against analytical results (Kepler orbits, conservation laws,
-published periodic solutions) and its order of accuracy is measured empirically.
+A from-scratch gravitational N-body simulator in Python, built to answer one question honestly:
+**how accurate and how fast are the standard numerical methods, and what does each approximation cost?**
+Everything is validated against analytical results and measured, not assumed.
 
-## What's implemented
-- Vectorized O(N^2) Newtonian gravity (optional softening)
-- Integrators written from scratch: **Euler**, **Velocity Verlet** (symplectic), **RK4**
-- Diagnostics: total energy, linear and angular momentum
-- Initial conditions with known answers: Keplerian two-body orbit, Chenciner-Montgomery figure-eight
-- 12 pytest tests covering both the physics and the numerics
+## Key findings
+- **Integrators** (Euler, Velocity Verlet, RK4, all written from scratch) reproduce their theoretical orders of
+  accuracy on a Kepler orbit: measured slopes of about 1 (Euler, pre-asymptotic at the step sizes tested), 2.00 (Verlet)
+  and 4.1 (RK4).
+- **Verlet's energy error stays bounded** over 20 eccentric orbits, while Euler's grows to about 100%.
+- **Numba kernels** are 6-10x (serial) and 10-33x (parallel, 12 logical cores) faster than vectorized NumPy at
+  N = 200-1600, agreeing to roundoff.
+- **Barnes-Hut tree code** (theta = 0.5) reaches about 0.35% median force error using 29% of the direct-sum
+  interactions at N = 1000.
+- **The approximation has a physical cost:** on a Plummer star cluster, direct summation conserves momentum to
+  machine precision (2e-17) while Barnes-Hut does not (1.5e-4), and Barnes-Hut energy error is 37-127x larger.
 
-## Results
-| Method | Order (measured) | Rel. energy error after 20 orbits (200 steps/orbit, e=0.6) |
+## Project structure
+
+## Run it
+
+## 1. Integrator validation (two-body Kepler orbit, e = 0.6)
+Validated against the analytical period, energy E = -G m1 m2 / (2a), and return to the initial state after one
+period. Also checked on the published Chenciner-Montgomery figure-eight three-body orbit.
+
+| Method | Measured order | Rel. energy error after 20 orbits (200 steps/orbit) |
 |---|---|---|
-| Euler | ~0.8 (approaches 1 as dt shrinks) | ~1.09 (energy not conserved) |
-| Velocity Verlet | 2.00 | ~7e-3 (bounded, does not grow) |
-| RK4 | ~4.1 | ~1e-4 (slow secular drift) |
+| Euler | about 0.8 (approaches 1 as dt shrinks) | about 1.09 (energy not conserved) |
+| Velocity Verlet | 2.00 | about 7e-3 (bounded, does not grow) |
+| RK4 | about 4.1 | about 1e-4 (slow secular drift) |
 
 ![energy](results/energy_comparison.png)
 ![convergence](results/convergence.png)
 
-**Takeaways:** Verlet is symplectic, so its energy error stays bounded over long runs. RK4 is far more
-accurate per step but drifts slowly over very long runs. Euler is unusable for orbits.
-Euler's measured order is below 1 because the tested step sizes are too coarse to be in the asymptotic regime.
+Verlet is symplectic, so its energy error stays bounded over long runs. RK4 is far more accurate per step but
+drifts slowly. Euler is unusable for orbits. Euler's measured order is below 1 because the step sizes tested are
+too coarse to be in the asymptotic regime.
 
-## Run it
-
-    pip install -r requirements.txt
-    pytest -q
-    python experiments/energy_comparison.py
-    python experiments/convergence.py
-
-## Roadmap
-- [x] Numba acceleration and benchmarks vs. pure NumPy
-- [x] Barnes-Hut tree (O(N log N)) with accuracy-vs-speed tradeoff
-- [ ] Adaptive time stepping
-- [ ] Sun-Earth-Moon validation against NASA JPL ephemeris data
-- [ ] Streamlit UI / animations
-
-
-## Performance (force calculation, 3D, 12 logical cores)
-All implementations agree to floating-point roundoff (max difference ~1e-13).
+## 2. Force-calculation performance (3D, 12 logical cores)
+All implementations agree to floating-point roundoff (max difference about 1e-13).
 
 | N | NumPy (s) | Numba serial (s) | Numba parallel (s) | Serial speedup | Parallel speedup |
 |---|---|---|---|---|---|
@@ -52,16 +49,11 @@ All implementations agree to floating-point roundoff (max difference ~1e-13).
 | 3200 | - | 0.11988 | 0.03581 | - | - |
 
 Speedups are relative to the vectorized NumPy version. Parallel scaling is about 3.3x over serial, not 12x,
-limited by physical core count, thread overhead and memory bandwidth. All versions are still O(N^2),
-which is what Barnes-Hut addresses next.
+limited by physical core count, thread overhead and memory bandwidth. All versions are still O(N^2).
 
-
-## Barnes-Hut tree code
-A quadtree/octree implementation (`nbody/barnes_hut.py`) that replaces distant groups of particles with
-their centre of mass when (node width) / (distance) < theta. With theta = 0 it reproduces the direct sum
-to roundoff (tested in 2D and 3D).
-
-**Accuracy vs. cost** (N = 1000, 3D Gaussian cloud, relative force error vs. direct sum):
+## 3. Barnes-Hut tree code
+Replaces distant groups of particles by their centre of mass when (node width) / (distance) < theta. With
+theta = 0 it reproduces the direct sum to roundoff (tested in 2D and 3D).
 
 | theta | median error | worst-particle error | interactions vs. direct |
 |---|---|---|---|
@@ -71,19 +63,14 @@ to roundoff (tested in 2D and 3D).
 | 0.7 | 8.6e-3 | 1.5e-1 | 17.3% |
 | 1.0 | 2.4e-2 | 2.7e-1 | 9.7% |
 
-**Work vs. N** (theta = 0.5): pair interactions grow with an empirical exponent of 1.54 over N = 250 to 2000
-(direct sum: 2.00). At N = 2000 the tree does 20% of the direct-sum work. This range is too small to confirm
-the asymptotic O(N log N) behaviour; larger N is needed. The tree is pure Python, so its wall-clock time is
-not competitive with the compiled Numba direct sum yet. The benchmark counts interactions, which are
-hardware-independent.
+Pair interactions grow with an empirical exponent of 1.54 over N = 250 to 2000 (direct sum: 2.00). At N = 2000 the
+tree does 20% of the direct-sum work. That range is too small to confirm the asymptotic O(N log N) behaviour.
 
 ![barnes-hut](results/barnes_hut.png)
 
-
-## Does the approximation preserve the physics? (Plummer cluster)
-`simulate()` accepts any force function, so the same cluster (N = 200, 3D Plummer sphere in virial
-equilibrium, softening 0.05, Velocity Verlet, dt = 0.01, 300 steps) was run with three force models.
-Energy is always measured with the exact direct-sum potential.
+## 4. Does the approximation preserve the physics? (Plummer cluster)
+Same cluster (N = 200, 3D Plummer sphere in virial equilibrium, softening 0.05, Velocity Verlet, dt = 0.01,
+300 steps), three force models. Energy is always measured with the exact direct-sum potential.
 
 | Force model | Wall time | Max abs(dE/E) | Max total momentum |
 |---|---|---|---|
@@ -91,11 +78,20 @@ Energy is always measured with the exact direct-sum potential.
 | Barnes-Hut, theta = 0.5 | 107 s | 2.7e-4 | 1.5e-4 |
 | Barnes-Hut, theta = 1.0 | 62 s | 9.4e-4 | 1.9e-3 |
 
-- Direct summation conserves momentum to machine precision. Barnes-Hut does not, which is consistent
-  with tree forces not being exactly equal and opposite between particle pairs (Newton's third law).
-- Barnes-Hut energy error is about 37x (theta = 0.5) and 127x (theta = 1.0) larger than direct summation,
-  though still below 0.1% over this run.
-- At N = 200 the pure-Python tree is about 76x slower in wall-clock time than the vectorized direct sum.
-  A compiled tree and larger N are needed before the O(N log N) algorithm pays off in practice.
-
 ![cluster](results/cluster_comparison.png)
+
+Direct summation conserves momentum to machine precision. Barnes-Hut does not, which is consistent with tree
+forces not being exactly equal and opposite between particle pairs (Newton's third law).
+
+## Limitations
+- The Barnes-Hut tree is pure Python: at N = 200 it is about 76x slower in wall-clock time than the vectorized
+  direct sum. It demonstrates the algorithm and its accuracy trade-off, not a production-speed tree.
+- The Barnes-Hut scaling range (N up to 2000) is too small to confirm O(N log N) asymptotically.
+- The cluster comparison covers one cluster, one random seed, and a short run (t = 3).
+- Fixed time steps only; no adaptive stepping or collision handling beyond softening.
+
+## Roadmap
+- [ ] Compile the tree with Numba and re-measure wall-clock scaling at larger N
+- [ ] Adaptive time stepping
+- [ ] Sun-Earth-Moon validation against NASA JPL ephemeris data
+- [ ] Interactive Streamlit UI / animations
