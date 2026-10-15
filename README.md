@@ -1,4 +1,4 @@
-﻿# N-Body Gravity Simulator
+# N-Body Gravity Simulator
 
 [![tests](https://github.com/dmatharv25-cmd/nbody-sim/actions/workflows/tests.yml/badge.svg)](https://github.com/dmatharv25-cmd/nbody-sim/actions/workflows/tests.yml)
 
@@ -10,15 +10,19 @@ Everything is validated against analytical results and measured, not assumed.
   <img src="results/figure_eight.gif" alt="Figure-eight three-body orbit" width="48%">
   <img src="results/cluster.gif" alt="Plummer star cluster" width="38%">
 </p>
+
 ## Key findings
 - **Integrators** (Euler, Velocity Verlet, RK4, all written from scratch) reproduce their theoretical orders of
-  accuracy on a Kepler orbit: measured slopes of about 1 (Euler, pre-asymptotic at the step sizes tested), 2.00 (Verlet)
+  accuracy on a Kepler orbit: measured slopes of about 0.8 (Euler, pre-asymptotic at the step sizes tested), 2.00 (Verlet)
   and 4.1 (RK4).
 - **Verlet's energy error stays bounded** over 20 eccentric orbits, while Euler's grows to about 100%.
 - **Numba kernels** are 6-10x (serial) and 10-33x (parallel, 12 logical cores) faster than vectorized NumPy at
   N = 200-1600, agreeing to roundoff.
 - **Barnes-Hut tree code** (theta = 0.5) reaches about 0.35% median force error using 29% of the direct-sum
   interactions at N = 1000.
+- **Compiled Barnes-Hut** (flat-array Numba, parallel force pass) is about 900-1000x faster than the pure-Python
+  tree at N = 1,000-2,000 and 11.6x faster than parallel direct summation at N = 32,000. Fitted wall-time
+  exponent for N >= 4,000 is 1.18 (tree) vs 1.92 (direct sum), consistent with N log N.
 - **The approximation has a physical cost:** on a Plummer star cluster, direct summation conserves momentum to
   machine precision (2e-17) while Barnes-Hut does not (1.5e-4), and Barnes-Hut energy error is 37-127x larger.
 
@@ -70,9 +74,36 @@ theta = 0 it reproduces the direct sum to roundoff (tested in 2D and 3D).
 | 1.0 | 2.4e-2 | 2.7e-1 | 9.7% |
 
 Pair interactions grow with an empirical exponent of 1.54 over N = 250 to 2000 (direct sum: 2.00). At N = 2000 the
-tree does 20% of the direct-sum work. That range is too small to confirm the asymptotic O(N log N) behaviour.
+tree does 20% of the direct-sum work. That range is too small to confirm the asymptotic O(N log N) behaviour; see the compiled-tree measurements below.
 
 ![barnes-hut](results/barnes_hut.png)
+
+### Compiled tree: wall-clock scaling at larger N
+The tree was rewritten with flat arrays (no Python objects) and compiled with Numba; force evaluation is parallel
+over particles. It matches the pure-Python tree in both forces and interaction counts (tested), and at theta = 0
+it matches direct summation. Setup: 3D Gaussian cloud, theta = 0.5, one seed, best of 2-3 runs, 12 logical cores.
+
+| N | direct sum, parallel (s) | tree, parallel (s) | tree speedup |
+|---|---|---|---|
+| 500 | 0.0016 | 0.0012 | 1.3x |
+| 1,000 | 0.0041 | 0.0031 | 1.4x |
+| 2,000 | 0.0149 | 0.0073 | 2.0x |
+| 4,000 | 0.0376 | 0.0178 | 2.1x |
+| 8,000 | 0.1414 | 0.0336 | 4.2x |
+| 16,000 | 0.5552 | 0.0856 | 6.5x |
+| 32,000 | 2.0326 | 0.1751 | 11.6x |
+| 64,000 | not timed | 0.4633 | - |
+| 128,000 | not timed | 0.9643 | - |
+
+Fitted wall-time exponent for N >= 4,000: **1.18** for the tree (interaction count: 1.22) vs **1.92** for direct
+summation. This is consistent with N log N but does not prove it: one distribution, one seed, a limited range.
+Time divided by N log2 N rises from about 270 ns (N = 500) to about 445 ns (N = 128,000); a plausible cause is cache
+effects, but this was not profiled. The compiled tree is about 860-1000x faster than the pure-Python tree at
+N = 1,000-2,000. Accuracy at N = 2,000, theta = 0.5: 0.32% median force error with 20.1% of direct-sum interactions.
+
+![tree scaling](results/tree_scaling.png)
+
+The dotted and dashed guide lines are anchored at the first data point, so they show slope only, not absolute time.
 
 ## 4. Does the approximation preserve the physics? (Plummer cluster)
 Same cluster (N = 200, 3D Plummer sphere in virial equilibrium, softening 0.05, Velocity Verlet, dt = 0.01,
@@ -87,17 +118,20 @@ Same cluster (N = 200, 3D Plummer sphere in virial equilibrium, softening 0.05, 
 ![cluster](results/cluster_comparison.png)
 
 Direct summation conserves momentum to machine precision. Barnes-Hut does not, which is consistent with tree
-forces not being exactly equal and opposite between particle pairs (Newton's third law).
+forces not being exactly equal and opposite between particle pairs (Newton's third law). The Barnes-Hut wall times in this table are from the original pure-Python tree.
 
 ## Limitations
-- The Barnes-Hut tree is pure Python: at N = 200 it is about 76x slower in wall-clock time than the vectorized
-  direct sum. It demonstrates the algorithm and its accuracy trade-off, not a production-speed tree.
-- The Barnes-Hut scaling range (N up to 2000) is too small to confirm O(N log N) asymptotically.
+- The compiled-tree scaling covers one distribution (Gaussian cloud), one seed and theta = 0.5. The fitted exponent
+  of 1.18 is consistent with N log N but does not prove it, and time per N log2 N drifts upward at large N
+  (cause not profiled).
+- Direct summation was not timed above N = 32,000, so the tree's speedup at N = 64,000 and 128,000 is not measured.
+- The compiled tree is 3D only. The cluster conservation test in section 4 used the pure-Python tree and has not
+  been repeated with the compiled one.
 - The cluster comparison covers one cluster, one random seed, and a short run (t = 3).
 - Fixed time steps only; no adaptive stepping or collision handling beyond softening.
 
 ## Roadmap
-- [ ] Compile the tree with Numba and re-measure wall-clock scaling at larger N
+- [x] Compile the tree with Numba and re-measure wall-clock scaling at larger N
 - [ ] Adaptive time stepping
 - [ ] Sun-Earth-Moon validation against NASA JPL ephemeris data
 - [ ] Interactive Streamlit UI / animations
