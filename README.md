@@ -78,3 +78,24 @@ not competitive with the compiled Numba direct sum yet. The benchmark counts int
 hardware-independent.
 
 ![barnes-hut](results/barnes_hut.png)
+
+
+## Does the approximation preserve the physics? (Plummer cluster)
+`simulate()` accepts any force function, so the same cluster (N = 200, 3D Plummer sphere in virial
+equilibrium, softening 0.05, Velocity Verlet, dt = 0.01, 300 steps) was run with three force models.
+Energy is always measured with the exact direct-sum potential.
+
+| Force model | Wall time | Max abs(dE/E) | Max total momentum |
+|---|---|---|---|
+| Direct sum (NumPy) | 1.4 s | 7.4e-6 | 2.3e-17 |
+| Barnes-Hut, theta = 0.5 | 107 s | 2.7e-4 | 1.5e-4 |
+| Barnes-Hut, theta = 1.0 | 62 s | 9.4e-4 | 1.9e-3 |
+
+- Direct summation conserves momentum to machine precision. Barnes-Hut does not, which is consistent
+  with tree forces not being exactly equal and opposite between particle pairs (Newton's third law).
+- Barnes-Hut energy error is about 37x (theta = 0.5) and 127x (theta = 1.0) larger than direct summation,
+  though still below 0.1% over this run.
+- At N = 200 the pure-Python tree is about 76x slower in wall-clock time than the vectorized direct sum.
+  A compiled tree and larger N are needed before the O(N log N) algorithm pays off in practice.
+
+![cluster](results/cluster_comparison.png)
