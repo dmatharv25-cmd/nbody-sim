@@ -33,8 +33,24 @@ Euler's measured order is below 1 because the tested step sizes are too coarse t
     python experiments/convergence.py
 
 ## Roadmap
-- [ ] Numba acceleration and benchmarks vs. pure NumPy
+- [x] Numba acceleration and benchmarks vs. pure NumPy
 - [ ] Barnes-Hut tree (O(N log N)) with accuracy-vs-speed tradeoff
 - [ ] Adaptive time stepping
 - [ ] Sun-Earth-Moon validation against NASA JPL ephemeris data
 - [ ] Streamlit UI / animations
+
+
+## Performance (force calculation, 3D, 12 logical cores)
+All implementations agree to floating-point roundoff (max difference ~1e-13).
+
+| N | NumPy (s) | Numba serial (s) | Numba parallel (s) | Serial speedup | Parallel speedup |
+|---|---|---|---|---|---|
+| 200 | 0.00549 | 0.00097 | 0.00053 | 5.7x | 10.4x |
+| 400 | 0.02620 | 0.00335 | 0.00108 | 7.8x | 24.2x |
+| 800 | 0.06882 | 0.00744 | 0.00243 | 9.2x | 28.3x |
+| 1600 | 0.29793 | 0.02975 | 0.00906 | 10.0x | 32.9x |
+| 3200 | - | 0.11988 | 0.03581 | - | - |
+
+Speedups are relative to the vectorized NumPy version. Parallel scaling is about 3.3x over serial, not 12x,
+limited by physical core count, thread overhead and memory bandwidth. All versions are still O(N^2),
+which is what Barnes-Hut addresses next.
