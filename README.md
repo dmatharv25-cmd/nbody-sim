@@ -68,15 +68,15 @@ Reproduce the results. Scripts that make figures or animations write them to `re
 
 Timings depend on your CPU. The numbers in this README came from a 12-logical-core machine.
 
-## 1. Integrator validation (two-body Kepler orbit, e = 0.6)
-Validated against the analytical period, energy E = -G m1 m2 / (2a), and return to the initial state after one
+## 1. Integrator validation (two-body Kepler orbit)
+Convergence orders were measured at e = 0.3 (100-3200 steps per period) and energy drift at e = 0.6. Validated against the analytical period, energy E = -G m1 m2 / (2a), and return to the initial state after one
 period. Also checked on the published Chenciner-Montgomery figure-eight three-body orbit.
 
-| Method | Measured order | Rel. energy error after 20 orbits (200 steps/orbit) |
+| Method | Measured order (e = 0.3) | Rel. energy error after 20 orbits (e = 0.6, 200 steps/orbit) |
 |---|---|---|
-| Euler | about 0.8 (approaches 1 as dt shrinks) | about 1.09 (energy not conserved) |
+| Euler | about 0.8 (local slopes 0.6-0.96; likely approaches 1) | about 1.09 (energy not conserved) |
 | Velocity Verlet | 2.00 | about 7e-3 (bounded, does not grow) |
-| RK4 | about 4.1 | about 1e-4 (slow secular drift) |
+| RK4 | about 4.1 (4.02 at the finest steps) | about 1e-4 (slow secular drift) |
 
 ![energy](results/energy_comparison.png)
 ![convergence](results/convergence.png)
